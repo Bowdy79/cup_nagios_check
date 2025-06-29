@@ -45,7 +45,7 @@ for i in jsonDump['images']:
     containers.append(imageObj)
    
 highest_exit_code = 0
-highest_short_message = ""
+highest_short_message = "OK - All containers up to date."
 highest_long_messages = []
 
 for h in containers:
