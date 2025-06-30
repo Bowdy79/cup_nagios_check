@@ -4,7 +4,8 @@ import docker
 # Connect to docker to load JSON
 client = docker.DockerClient(base_url='unix://var/run/docker.sock')
 v = {'/var/run/docker.sock': {'bind':'/var/run/docker.sock', 'mode':'ro'}}
-j = client.containers.run('ghcr.io/sergi0g/cup', volumes=v, detach=False, stdout=True, command='check -r')
+e = {'CUP_IGNORE_UPDATE_TYPE': 'major'}
+j = client.containers.run('ghcr.io/sergi0g/cup', volumes=v, environment=e, detach=False, stdout=True, command='check -r')
 
 jsonDump = json.loads(j)
 
