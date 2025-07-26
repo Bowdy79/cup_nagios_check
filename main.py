@@ -6,6 +6,7 @@ client = docker.DockerClient(base_url='unix://var/run/docker.sock')
 v = {'/var/run/docker.sock': {'bind':'/var/run/docker.sock', 'mode':'ro'}}
 e = {'CUP_IGNORE_UPDATE_TYPE': 'major'}
 j = client.containers.run('ghcr.io/sergi0g/cup', volumes=v, environment=e, detach=False, stdout=True, command='check -r')
+tag_bl = ("redis:7.2-alpine")
 
 jsonDump = json.loads(j)
 
@@ -30,9 +31,14 @@ class Image:
         self.time = imageJson['time']
         self.url = imageJson['url']
         if self.result['has_update']:
-            self.nagios_exit_code = 1
-            self.nagios_short_message = "WARNING - Container image updates available!"
-            self.nagios_long_message = f"{self.parts['repository']} - {self.url}"
+            if self.reference in tag_bl:
+                self.nagios_exit_code = 0
+                self.nagios_short_message = "OK - All containers up to date. (Update available for ignored image!)"
+                self.nagios_long_message = f"Ignored Tag: {self.reference} -> {self.result['info']['new_tag']} available."
+            else:
+                self.nagios_exit_code = 1
+                self.nagios_short_message = "WARNING - Container image updates available!"
+                self.nagios_long_message = f"{self.parts['repository']} - {self.url}"
         else:
             self.nagios_exit_code = 0
             self.nagios_short_message = "OK - All containers up to date."
@@ -52,8 +58,7 @@ for h in containers:
     if h.nagios_exit_code > highest_exit_code:
         highest_exit_code = h.nagios_exit_code
         highest_short_message = h.nagios_short_message
-    if h.nagios_exit_code > 0:
-        highest_long_messages.append(h.nagios_long_message)
+    highest_long_messages.append(h.nagios_long_message)
 
 print(highest_short_message)
 for lm in highest_long_messages:
