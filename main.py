@@ -6,7 +6,7 @@ client = docker.DockerClient(base_url='unix://var/run/docker.sock')
 v = {'/var/run/docker.sock': {'bind':'/var/run/docker.sock', 'mode':'ro'}}
 e = {'CUP_IGNORE_UPDATE_TYPE': 'major'}
 j = client.containers.run('ghcr.io/sergi0g/cup', volumes=v, environment=e, detach=False, stdout=True, command='check -r')
-tag_bl = ("redis:7.2-alpine")
+tag_bl = ("redis:7.2-alpine", "getmeili/meilisearch:v1.12.8")
 
 jsonDump = json.loads(j)
 
@@ -20,7 +20,7 @@ class Image:
     url = ""
     nagios_exit_code = 3
     nagios_short_message = "UNKNOWN - Error while checking for updates!"
-    nagios_long_message = ""
+    nagios_long_message = None
 
     def __init__(self, imageJson):
         self.in_use = imageJson['in_use']
@@ -58,7 +58,8 @@ for h in containers:
     if h.nagios_exit_code > highest_exit_code:
         highest_exit_code = h.nagios_exit_code
         highest_short_message = h.nagios_short_message
-    highest_long_messages.append(h.nagios_long_message)
+    if h.nagios_long_message != None:
+        highest_long_messages.append(h.nagios_long_message)
 
 print(highest_short_message)
 for lm in highest_long_messages:
