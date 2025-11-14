@@ -8,12 +8,15 @@ e = {'CUP_IGNORE_UPDATE_TYPE': 'major'}
 j = client.containers.run('ghcr.io/sergi0g/cup', volumes=v, environment=e, detach=False, stdout=True, command='check -r')
 tag_bl = ("redis:7.2-alpine", "getmeili/meilisearch:v1.12.8")
 
+ps = client.containers.list()
+
 jsonDump = json.loads(j)
 
 class Image:
     in_use = False
     parts = []
     reference = ""
+    used_by_containers = []
     result = []
     server = ""
     time = 0
@@ -22,7 +25,8 @@ class Image:
     nagios_short_message = "UNKNOWN - Error while checking for updates!"
     nagios_long_message = None
 
-    def __init__(self, imageJson):
+    def __init__(self, imageJson, runningContainers):
+        self.used_by_containers = []
         self.in_use = imageJson['in_use']
         self.parts = imageJson['parts']
         self.reference = imageJson['reference']
@@ -36,9 +40,14 @@ class Image:
                 self.nagios_short_message = "OK - All containers up to date. (Update available for ignored image!)"
                 self.nagios_long_message = f"Ignored Tag: {self.reference} -> {self.result['info']['new_tag']} available."
             else:
+                for c in runningContainers:
+                    if self.reference in c.image.tags:
+                        self.used_by_containers.append(c.name)
+                if len(self.used_by_containers) == 0:
+                    self.used_by_containers.append('none')
                 self.nagios_exit_code = 1
                 self.nagios_short_message = "WARNING - Container image updates available!"
-                self.nagios_long_message = f"{self.parts['repository']} - {self.url}"
+                self.nagios_long_message = f"{self.parts['repository']} - Used in container(s): {self.used_by_containers}"
         else:
             self.nagios_exit_code = 0
             self.nagios_short_message = "OK - All containers up to date."
@@ -47,7 +56,7 @@ containers = []
 updates_available = 0
 
 for i in jsonDump['images']:
-    imageObj = Image(i)
+    imageObj = Image(i, ps)
     containers.append(imageObj)
    
 highest_exit_code = 0
